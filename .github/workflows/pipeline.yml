@@ -30,3 +30,15 @@ jobs:
     - name: Run Tests
       run: |
         pytest test_app.py -v
+
+    - name: Build Docker Image
+      run: |
+        docker build -t devsecops-pipeline:latest .
+
+    - name: Test Docker Image
+      run: |
+        docker run -d -p 5000:5000 --name test-container devsecops-pipeline:latest
+        sleep 3
+        curl http://localhost:5000/health
+        docker stop test-container
+        docker rm test-container
