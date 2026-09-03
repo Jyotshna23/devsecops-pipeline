@@ -1,5 +1,4 @@
 name: DevSecOps Pipeline
-
 on:
   push:
     branches: [ main ]
@@ -9,7 +8,6 @@ on:
 jobs:
   security-and-test:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -18,6 +16,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
+        cache: 'pip'  # caches pip downloads between runs
 
     - name: Install dependencies
       run: |
@@ -25,7 +24,10 @@ jobs:
 
     - name: Security Scan (Bandit)
       run: |
-        bandit -r app.py -f txt --exit-zero
+        bandit -r app.py -f txt -ll
+        # -ll = fail the build on MEDIUM or HIGH severity findings.
+        # (--exit-zero was removed - it silently passed the pipeline
+        # even when Bandit found real vulnerabilities.)
 
     - name: Run Tests
       run: |
@@ -35,10 +37,19 @@ jobs:
       run: |
         docker build -t devsecops-pipeline:latest .
 
+    - name: Scan Docker Image (Trivy)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'devsecops-pipeline:latest'
+        format: 'table'
+        severity: 'CRITICAL,HIGH'
+        exit-code: '1'  # fail the build if critical/high CVEs are found in the base image
+
     - name: Test Docker Image
       run: |
         docker run -d -p 5000:5000 --name test-container devsecops-pipeline:latest
         sleep 3
-        curl http://localhost:5000/health
+        curl --fail http://localhost:5000/health
+        curl --fail http://localhost:5000/metrics
         docker stop test-container
         docker rm test-container
