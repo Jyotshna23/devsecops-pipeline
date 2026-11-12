@@ -1,105 +1,136 @@
 # 🔐 DevSecOps CI/CD Pipeline
 
-![Pipeline Status](https://github.com/Jyotshna23/devsecops-pipeline/actions/workflows/pipeline.yml/badge.svg)
-![Python](https://img.shields.io/badge/Python-3.9-blue)
-![Security](https://img.shields.io/badge/Security-Bandit-red)
-![Tests](https://img.shields.io/badge/Tests-Pytest-green)
+`Pipeline: Passing` • `Python 3.9 / 3.10` • `Security: Bandit SAST` • `Container Scan: Aqua Trivy` • `Tests: Pytest` • `Docker: Alpine`
+
+**An automated Shift-Left DevSecOps pipeline built with GitHub Actions that enforces static security analysis, unit testing, container vulnerability scanning, and runtime health checks on every code push.**
+
+---
 
 ## 🚨 Problem Statement
 
-In modern software development, security vulnerabilities cost companies millions of dollars every year. Traditional development workflows treat security as an afterthought — developers write code, ship it, and only discover vulnerabilities after a breach occurs. This project solves that problem by integrating security scanning and automated testing directly into the development pipeline, so every single line of code is automatically scanned for vulnerabilities before it reaches production.
+In modern software delivery, security vulnerabilities cost organizations millions of dollars every year. Traditional development workflows treat security as an afterthought — developers write code, ship it, and only discover critical flaws after reaching production.
+
+This project solves that challenge by embedding automated **Security Gates (SAST + Container Scanning)** and **Quality Gates (Unit + Smoke Tests)** directly into the CI/CD pipeline, ensuring every single commit is verified before deployment.
+
+---
 
 ## ⚡ What This Project Does
 
-This is a fully automated DevSecOps pipeline built with GitHub Actions. Every time a developer pushes code, the pipeline automatically triggers and runs through the following stages without any human intervention:
+Every time code is pushed to `main` or opened as a pull request, **GitHub Actions** automatically executes a 6-stage verification workflow with zero human intervention:
 
-- ✅ Pulls the latest code from the repository
-- ✅ Sets up a clean Python environment
-- ✅ Installs all required dependencies
-- ✅ Runs Bandit security scanner to detect vulnerabilities like SQL injection, hardcoded passwords, and insecure functions
-- ✅ Runs all automated test cases using Pytest
-- ✅ Reports Pass or Fail within seconds
+- ✅ **Checks out the repository** and configures an isolated Python environment with `pip` caching for fast builds.
+- ✅ **Runs Bandit SAST (`bandit -r app.py -f txt -ll`)** to detect common Python security flaws and fails the build immediately on `MEDIUM` or `HIGH` severity issues.
+- ✅ **Executes automated unit tests (`pytest test_app.py -v`)** to verify API responses, system telemetry, and error handling.
+- ✅ **Builds a lightweight Docker image** using `python:3.10-alpine` with optimized layer caching.
+- ✅ **Audits the container image with Aqua Trivy** to detect `CRITICAL` and `HIGH` CVEs across OS packages and Python libraries.
+- ✅ **Performs live container smoke tests** by starting the container on port `5000`, verifying `/health` and `/metrics` via `curl --fail`, and cleaning up resources.
 
-The entire process completes in under 20 seconds, replacing what would otherwise take a developer hours to do manually.
+---
 
-## 🌍 Real World Applications
+## 🏗️ Pipeline Architecture
 
-**🏥 Healthcare** — Hospitals use DevSecOps pipelines to protect patient data and comply with HIPAA regulations. A single vulnerability can expose thousands of patient records.
+```text
+  Git Push / Pull Request (main)
+               │
+               ▼
+  [1. Environment Setup]   ──► Python + cached pip dependencies
+               │
+               ▼
+  [2. SAST Security Gate]  ──► Bandit scan (-ll blocks MEDIUM/HIGH risks)
+               │
+               ▼
+  [3. Unit Testing]        ──► Pytest verbose test suite (test_app.py)
+               │
+               ▼
+  [4. Container Build]     ──► Docker image (python:3.10-alpine)
+               │
+               ▼
+  [5. CVE Vulnerability]   ──► Aqua Trivy scan (CRITICAL & HIGH audit)
+               │
+               ▼
+  [6. Runtime Smoke Test]  ──► Live container check on /health & /metrics
+```
 
-**🏦 Banking & Fintech** — Banks use automated security scanning to prevent data breaches. The average cost of a data breach in the financial sector is over $5 million.
+---
 
-**🏛️ Government** — Defense organizations use compliance pipelines to ensure every deployment meets strict security standards automatically.
+## 🔌 Microservice API Endpoints
 
-**🚀 Startups** — Small teams use CI/CD pipelines to ship features faster without sacrificing code quality.
+| Method | Endpoint | Description | Sample JSON Response |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/` | Root service health banner | `{"message": "DevSecOps Pipeline Running!", "status": "healthy"}` |
+| `GET` | `/health` | Container liveness probe | `{"status": "ok"}` |
+| `GET` | `/metrics` | Live CPU & memory usage (`psutil`) | `{"cpu_percent": 4.2, "memory_percent": 38.5}` |
 
-## 🏗️ Technical Architecture
-Developer pushes code to GitHub
-            |
-            v
-   GitHub Actions triggered
-            |
-            v
-   Environment setup (Python 3.9)
-            |
-            v
-   Dependencies installed
-            |
-            v
-   Bandit Security Scan
-   - Scans for 30+ vulnerability types
-   - Detects hardcoded secrets
-   - Identifies insecure function usage
-            |
-            v
-   Pytest Automated Tests
-   - Tests all API endpoints
-   - Validates response codes
-   - Ensures application health
-            |
-            v
-   Pipeline Result: Pass or Fail
+---
 
-## 📊 Pipeline Metrics
+## 🛠️ Tech Stack & Security Tooling
 
-| Metric | Value |
-|--------|-------|
-| Lines of code scanned | 10 |
-| Vulnerability types checked | 30+ |
-| Automated test cases | 2 |
-| Average pipeline duration | 17 seconds |
-| Manual effort replaced | 2-3 hours per deployment |
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **CI/CD Automation** | GitHub Actions (`pipeline.yml`) | Automated build, test, and security gate orchestration |
+| **Static Security (SAST)** | Bandit (`1.7.8`) | Scans Python source code for insecure functions & patterns |
+| **Container Security** | Aqua Security Trivy | Scans Docker Alpine OS & dependencies for known CVEs |
+| **Containerization** | Docker (`python:3.10-alpine`) | Minimal-footprint container packaging |
+| **Backend Microservice** | Python, Flask (`3.0.2`), `psutil` (`5.9.8`) | Hardened REST API with structured JSON error handling |
+| **Automated Testing** | Pytest (`8.0.2`), `curl` | Unit testing and post-build container runtime verification |
 
-## 🛠️ Tech Stack
+---
 
-| Tool | Purpose |
-|------|---------|
-| GitHub Actions | CI/CD automation engine |
-| Bandit | Python static security analysis |
-| Pytest | Automated testing framework |
-| Flask | Web application layer |
-| Python 3.9 | Runtime environment |
+## 📂 Repository Structure
 
-## 🚀 How To Run Locally
+```text
+devsecops-pipeline/
+├── .github/
+│   └── workflows/
+│       └── pipeline.yml    # Automated 6-stage GitHub Actions DevSecOps workflow
+├── Dockerfile              # Lightweight python:3.10-alpine container image
+├── app.py                  # Hardened Flask microservice (/health, /metrics, error handlers)
+├── test_app.py             # Pytest unit and API endpoint test suite
+├── requirements.txt        # Pinned application and security scanning dependencies
+└── README.md               # Project documentation
+```
 
-git clone https://github.com/Jyotshna23/devsecops-pipeline.git
+---
+
+## 🚀 Quick Start (Local & Docker)
+
+### Run Locally with Python
+
+```bash
+# 1. Clone the repository
+git clone https://github.com
 cd devsecops-pipeline
+
+# 2. Install dependencies
 pip install -r requirements.txt
-python app.py
+
+# 3. Run SAST security scan & unit tests
+bandit -r app.py -f txt -ll
 pytest test_app.py -v
 
-## 📁 Project Structure
+# 4. Start the Flask microservice
+python app.py
+```
 
-devsecops-pipeline/
-├── app.py                        
-├── test_app.py                   
-├── requirements.txt              
-└── .github/
-    └── workflows/
-        └── pipeline.yml          
+### Build & Test with Docker
+
+```bash
+# Build the Alpine Docker image
+docker build -t devsecops-pipeline:latest .
+
+# Run the container
+docker run -d -p 5000:5000 --name devsecops-app devsecops-pipeline:latest
+
+# Verify endpoints
+curl http://localhost:5000/health
+curl http://localhost:5000/metrics
+```
+
+---
 
 ## 👩‍💻 Author
 
-**Jyotshna Pogiri** — Software Engineer | DevSecOps Enthusiast
-
-GitHub: https://github.com/Jyotshna23
-Email: jahnavipogiri3@gmail.com
+**Jyotshna Pogiri** — Python, Cloud & DevSecOps Enthusiast
+- **GitHub:** ://github.com
+- **LinkedIn:** ://linkedin.com
+- **Email:** jahnavipogiri3@gmail.com
