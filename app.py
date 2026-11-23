@@ -1,12 +1,45 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, Response, request
+from prometheus_client import Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import psutil
+import logging
+import json
+import time
 
 app = Flask(__name__)
+
+# Structured JSON logging for observability pipelines
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+# Prometheus Metrics
+REQUEST_COUNT = Counter('app_requests_total', 'Total HTTP requests', ['method', 'endpoint', 'status'])
+REQUEST_LATENCY = Histogram('app_request_latency_seconds', 'HTTP request latency in seconds', ['endpoint'])
+CPU_USAGE = Gauge('system_cpu_usage_percent', 'Current system CPU usage percentage')
+MEMORY_USAGE = Gauge('system_memory_usage_percent', 'Current system Memory usage percentage')
+
+
+@app.before_request
+def start_timer():
+    request.start_time = time.time()
+
+
+@app.after_request
+def log_request(response):
+    if hasattr(request, 'start_time'):
+        latency = round(time.time() - request.start_time, 4)
+        REQUEST_LATENCY.labels(endpoint=request.path).observe(latency)
+        REQUEST_COUNT.labels(method=request.method, endpoint=request.path, status=response.status_code).inc()
+        app.logger.info(json.dumps({
+            "method": request.method,
+            "endpoint": request.path,
+            "status": response.status_code,
+            "latency_sec": latency
+        }))
+    return response
 
 
 @app.route('/')
 def home():
-    return jsonify({"message": "DevSecOps Pipeline Running!", "status": "healthy"})
+    return jsonify({"message": "DevSecOps & Observability Pipeline Running!", "status": "healthy"})
 
 
 @app.route('/health')
@@ -16,12 +49,10 @@ def health():
 
 @app.route('/metrics')
 def metrics():
-    # Basic resource visibility - useful for spotting a runaway process
-    # before it takes the whole service down, not full observability.
-    return jsonify({
-        "cpu_percent": psutil.cpu_percent(interval=0.1),
-        "memory_percent": psutil.virtual_memory().percent,
-    })
+    # Prometheus-compatible metrics exposition endpoint
+    CPU_USAGE.set(psutil.cpu_percent(interval=0.1))
+    MEMORY_USAGE.set(psutil.virtual_memory().percent)
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 
 @app.errorhandler(404)
@@ -32,7 +63,7 @@ def not_found(error):
 @app.errorhandler(500)
 def server_error(error):
     # Never leak a raw stack trace to the client - log it server-side instead.
-    app.logger.error(f"Internal server error: {error}")
+    app.logger.error(json.dumps({"error": "Internal server error", "details": str(error)}))
     return jsonify({"error": "Internal server error", "status": 500}), 500
 
 
