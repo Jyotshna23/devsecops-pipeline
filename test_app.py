@@ -53,6 +53,6 @@ def test_invalid_route_returns_json(client):
 def test_metrics_endpoint(client):
     response = client.get('/metrics')
     assert response.status_code == 200
-    data = response.get_json()
-    assert "cpu_percent" in data
-    assert "memory_percent" in data
+    body = response.get_data(as_text=True)
+    assert "system_cpu_usage_percent" in body
+    assert "system_memory_usage_percent" in body
