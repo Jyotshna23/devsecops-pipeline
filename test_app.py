@@ -42,8 +42,6 @@ def test_invalid_route(client):
 
 
 def test_invalid_route_returns_json(client):
-    # Confirms the custom 404 handler is actually wired up,
-    # not just Flask's default HTML 404 page.
     response = client.get('/invalid')
     assert response.content_type == "application/json"
     data = response.get_json()
