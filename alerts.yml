@@ -1,0 +1,26 @@
+groups:
+  - name: infrastructure_alerts
+    rules:
+      - alert: HighMemoryUsage
+        expr: system_memory_usage_percent > 80
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory usage exceeded 80% threshold"
+
+      - alert: HighCPUUsage
+        expr: system_cpu_usage_percent > 85
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage exceeded 85% threshold"
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target Flask service is unreachable"
